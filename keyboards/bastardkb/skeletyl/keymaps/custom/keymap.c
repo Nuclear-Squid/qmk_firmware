@@ -65,6 +65,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 #define with_mod_on_hold(kc, mod) ((record->tap.count > 0) ? kc : mod(kc))
 volatile bool scroll_lock_state = false;
+uint32_t last_key_press_timer = 0;
 
 // This callback is called before the keycode is generally sent
 // returning false cancels any furnther treatment.
@@ -78,15 +79,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
         return true;
     }
 
-    // On key down
-    if (record->event.pressed) switch (keycode) {
+    if (!record->event.pressed) return true;
+
+    last_key_press_timer = timer_read32();
+
+    switch (keycode) {
         case KC_BE: tap_code16(with_mod_on_hold(KC_E, LGUI)); return false;
         case KC_BI: tap_code16(with_mod_on_hold(KC_I, LGUI)); return false;
         case PARENT_PATH: SEND_STRING("nn-"); return false;
 
         case CTRL_OTS:
-            // if (host_keyboard_led_state().scroll_lock) {
-            if (IS_LED_HOST_ON(USB_LED_SCROLL_LOCK)) {
+            if (scroll_lock_state) {
                 tap_code16(KC_BTN1);
                 return false;
             }
@@ -122,3 +125,19 @@ bool led_update_user(led_t led_state) {
     return true;
 }
 
+enum combos {
+    COMBO_CTRL_BS,
+    COMBO_MOUSE_1,
+};
+
+const uint16_t PROGMEM sd_combo[] = { KC_SS, KC_GD, COMBO_END };
+const uint16_t PROGMEM cv_combo[] = { KC_C,  KC_V,  COMBO_END };
+
+combo_t key_combos[] = {
+    [COMBO_CTRL_BS] = COMBO(sd_combo, LCTL(KC_BSPC)),
+    [COMBO_MOUSE_1] = COMBO(cv_combo, KC_BTN1),
+};
+
+bool combo_should_trigger(uint16_t combo_index, combo_t *combo, uint16_t keycode, keyrecord_t *record) {
+    return timer_elapsed32(last_key_press_timer) > TAP_INTERVAL;
+}

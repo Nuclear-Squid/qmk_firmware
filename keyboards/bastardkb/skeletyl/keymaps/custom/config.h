@@ -19,7 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Pick good defaults for enabling homerow modifiers
 #define TAPPING_TERM 200
-#define COMBO_TERM 10
+#define TAP_INTERVAL 150
+#define COMBO_TERM 25
 
 #define ONESHOT_TAP_TOGGLE 2  // Double tap oneshot key to lock it
 #define ONESHOT_TIMEOUT 3000  // Release oneshot key after (time in ms)

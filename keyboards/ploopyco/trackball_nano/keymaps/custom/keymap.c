@@ -10,6 +10,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {{{ KC_NO }}};
 
 static bool num_lock_state = false;
 
+static int8_t delta_x = 0;
+static int8_t delta_y = 0;
+
 void keyboard_post_init_user(void) {
     num_lock_state  = host_keyboard_led_state().num_lock;
 }
@@ -32,44 +35,31 @@ void handle_mouse_acceleration(report_mouse_t* mouse_report) {
 
     distance_index = (distance_index + 1) % NB_DISTANCE_VALUES;
 
-    const float gain = 1.5;
+    const float gain = 2;
     const float accel = 1 + total_distance * gain / NB_DISTANCE_VALUES;
-    // const uint16_t base_dpi = 200;
-    // const uint16_t max_dpi = 1000;
 
-    // pointing_device_set_cpi(MIN((uint16_t) base_dpi * accel, max_dpi));
-
-    mouse_report->x *= MIN(accel, 5.);
-    mouse_report->y *= MIN(accel, 5.);
+    mouse_report->x *= MIN(accel, 6.);
+    mouse_report->y *= MIN(accel, 6.);
 }
-
-#define ABS(val) (val < 0 ? -val : val)
-#define CLAMP(val, min, max) (MIN(MAX(val, min), max))
 
 report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
     handle_mouse_acceleration(&mouse_report);
 
-    static int8_t delta_x = 0;
-    static int8_t delta_y = 0;
     static uint16_t roll_timer = 0;
     static bool scroll_lock_on = false;
 
-    delta_x += mouse_report.x;
-    delta_y += mouse_report.y;
-
     if (num_lock_state) {
+        delta_x += mouse_report.x;
+        delta_y += mouse_report.y;
+
+        mouse_report.h =  delta_x / DELTA_X_THRESHOLD;
+        mouse_report.v = -delta_y / DELTA_Y_THRESHOLD;
+
+        delta_y %= DELTA_Y_THRESHOLD;
+        delta_x %= DELTA_X_THRESHOLD;
+
         mouse_report.x = 0;
         mouse_report.y = 0;
-
-        if (ABS(delta_x) > DELTA_X_THRESHOLD) {
-            mouse_report.h = delta_x / DELTA_X_THRESHOLD;
-            delta_x %= DELTA_X_THRESHOLD;
-        }
-
-        if (ABS(delta_y) > DELTA_Y_THRESHOLD) {
-            mouse_report.v = -delta_y / DELTA_Y_THRESHOLD;
-            delta_y %= DELTA_Y_THRESHOLD;
-        }
 
         return mouse_report;
     }
@@ -94,5 +84,6 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 
 bool led_update_user(led_t led_state) {
     num_lock_state = led_state.num_lock;
+    delta_x = delta_y = 0;
     return true;
 }
